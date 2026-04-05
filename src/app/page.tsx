@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/lib/auth';
 import { User } from '@/lib/auth';
+import { subscriptionService } from '@/lib/subscription';
 
 interface Platform {
   id: string;
@@ -19,6 +20,7 @@ export default function HomePage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPro, setIsPro] = useState(false);
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
 
   useEffect(() => {
@@ -30,6 +32,15 @@ export default function HomePage() {
           return;
         }
         setUser(currentUser);
+
+        // Check subscription status
+        try {
+          const subStatus = await subscriptionService.getStatus();
+          setIsPro(subStatus.subscription_status === 'pro');
+        } catch {
+          // Default to free if check fails
+          setIsPro(false);
+        }
       } catch {
         router.push('/auth/signin');
       } finally {
@@ -239,7 +250,8 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* Subscription Upgrade Card */}
+        {/* Subscription Upgrade Card - Only show if user is NOT Pro */}
+        {!isPro && (
         <Link href="/subscribe">
           <div className="w-full p-5 rounded-2xl bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] shadow-lg mb-4">
             <div className="flex items-center gap-4">
@@ -268,6 +280,7 @@ export default function HomePage() {
             </div>
           </div>
         </Link>
+        )}
 
         {/* Schedule Posts Button (for Pro users) */}
         <Link href="/schedule">
