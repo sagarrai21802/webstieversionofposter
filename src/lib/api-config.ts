@@ -34,6 +34,14 @@ export const API_CONFIG = {
   // Subscription endpoints
   subscriptionActivate: `${API_PREFIX}/subscription/activate`,
   subscriptionStatus: `${API_PREFIX}/subscription/status`,
+
+  // Topics endpoints
+  topicsTrending: `${API_PREFIX}/topics/trending`,
+
+  // Schedule endpoints
+  scheduleCreate: `${API_PREFIX}/schedule/create`,
+  scheduleCalendar: `${API_PREFIX}/schedule/calendar`,
+  scheduleCalendarEntry: (entryId: string) => `${API_PREFIX}/schedule/calendar/${entryId}`,
 };
 
 export const getFullUrl = (endpoint: string): string => {
