@@ -30,6 +30,10 @@ export const API_CONFIG = {
   linkedinPost: `${API_PREFIX}/auth/linkedin/post`,
   linkedinDisconnect: `${API_PREFIX}/auth/linkedin/disconnect`,
   linkedinCallback: `${API_PREFIX}/auth/linkedin/callback`,
+
+  // Subscription endpoints
+  subscriptionActivate: `${API_PREFIX}/subscription/activate`,
+  subscriptionStatus: `${API_PREFIX}/subscription/status`,
 };
 
 export const getFullUrl = (endpoint: string): string => {
