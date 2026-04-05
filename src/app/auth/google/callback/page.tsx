@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import apiClient from '@/lib/api';
+import { setAccessToken } from '@/lib/api';
 
 function GoogleCallbackContent() {
   const searchParams = useSearchParams();
@@ -11,7 +11,6 @@ function GoogleCallbackContent() {
   
   useEffect(() => {
     const token = searchParams.get('token');
-    const refresh = searchParams.get('refresh');
     const error = searchParams.get('error');
     
     if (error) {
@@ -22,9 +21,8 @@ function GoogleCallbackContent() {
       return;
     }
     
-    if (token && refresh) {
-      // Store tokens using the API client
-      apiClient.setTokens(token, refresh);
+    if (token) {
+      setAccessToken(token);
       setStatus('success');
       setTimeout(() => {
         router.push('/');

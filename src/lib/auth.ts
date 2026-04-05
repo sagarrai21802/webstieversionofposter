@@ -1,4 +1,4 @@
-import apiClient from './api';
+import apiClient, { setAccessToken, clearAccessToken, getAccessToken } from './api';
 import { API_CONFIG } from './api-config';
 
 export interface User {
@@ -21,11 +21,13 @@ export interface UserProfile {
   years_experience?: number;
   preferred_tone?: string;
   is_complete?: boolean;
+  profile_picture?: string;
+  locale?: string;
+  gender?: string;
 }
 
 export interface TokenResponse {
   access_token: string;
-  refresh_token: string;
   token_type: string;
 }
 
@@ -48,7 +50,7 @@ class AuthService {
       email,
       password,
     });
-    apiClient.setTokens(response.access_token, response.refresh_token);
+    setAccessToken(response.access_token);
     return response;
   }
 
@@ -56,33 +58,24 @@ class AuthService {
     const response = await apiClient.post<TokenResponse>(API_CONFIG.googleLogin, {
       id_token: idToken,
     });
-    apiClient.setTokens(response.access_token, response.refresh_token);
+    setAccessToken(response.access_token);
     return response;
   }
 
   async refreshToken(): Promise<TokenResponse> {
-    const refreshToken = apiClient.getRefreshToken();
-    if (!refreshToken) {
-      throw new Error('No refresh token found');
-    }
-
-    const response = await apiClient.post<TokenResponse>(API_CONFIG.refresh, {
-      refresh_token: refreshToken,
-    });
-    apiClient.setTokens(response.access_token, response.refresh_token);
+    const response = await apiClient.post<TokenResponse>(API_CONFIG.refresh, {});
+    setAccessToken(response.access_token);
     return response;
   }
 
   async logout(): Promise<void> {
-    const refreshToken = apiClient.getRefreshToken();
-    if (refreshToken) {
-      try {
-        await apiClient.post(API_CONFIG.logout, { refresh_token: refreshToken });
-      } catch {
-        // Ignore errors on logout
-      }
+    try {
+      await apiClient.post(API_CONFIG.logout, {});
+    } catch {
+      // Ignore errors on logout
     }
     apiClient.clearTokens();
+    clearAccessToken();
   }
 
   async getCurrentUser(): Promise<User | null> {
@@ -94,13 +87,13 @@ class AuthService {
       const user = await apiClient.get<User>(API_CONFIG.me);
       return user;
     } catch {
-      // Token might be expired, try to refresh
       try {
         await this.refreshToken();
         const user = await apiClient.get<User>(API_CONFIG.me);
         return user;
       } catch {
         apiClient.clearTokens();
+        clearAccessToken();
         return null;
       }
     }

@@ -1,6 +1,20 @@
 import axios, { AxiosError, AxiosResponse, AxiosRequestHeaders, AxiosRequestConfig } from 'axios';
 import { API_CONFIG } from './api-config';
 
+let inMemoryAccessToken: string | null = null;
+
+export function setAccessToken(token: string): void {
+  inMemoryAccessToken = token;
+}
+
+export function getAccessToken(): string | null {
+  return inMemoryAccessToken;
+}
+
+export function clearAccessToken(): void {
+  inMemoryAccessToken = null;
+}
+
 interface ApiException {
   message: string;
   statusCode?: number;
@@ -10,6 +24,7 @@ class ApiClient {
   private client;
   private isRefreshing = false;
   private refreshPromise: Promise<boolean> | null = null;
+  private failedRequests: Array<() => void> = [];
 
   constructor() {
     this.client = axios.create({
@@ -18,11 +33,12 @@ class ApiClient {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
+      withCredentials: true,
     });
 
     this.client.interceptors.request.use(
       (config) => {
-        const token = this.getAccessToken();
+        const token = getAccessToken();
         if (token && config.headers) {
           (config.headers as AxiosRequestHeaders).Authorization = `Bearer ${token}`;
         }
@@ -44,13 +60,13 @@ class ApiClient {
             if (refreshed) {
               return this.client(originalRequest);
             } else {
-              this.clearTokens();
+              clearAccessToken();
               if (typeof window !== 'undefined') {
                 window.location.href = '/auth/signin';
               }
             }
           } catch {
-            this.clearTokens();
+            clearAccessToken();
             if (typeof window !== 'undefined') {
               window.location.href = '/auth/signin';
             }
@@ -63,27 +79,15 @@ class ApiClient {
   }
 
   getAccessToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('access_token');
-    }
-    return null;
+    return inMemoryAccessToken;
   }
 
-  getRefreshToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('refresh_token');
-    }
-    return null;
-  }
-
-  setTokens(accessToken: string, refreshToken: string) {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('access_token', accessToken);
-      localStorage.setItem('refresh_token', refreshToken);
-    }
+  setAccessTokenOnly(accessToken: string) {
+    inMemoryAccessToken = accessToken;
   }
 
   clearTokens() {
+    inMemoryAccessToken = null;
     if (typeof window !== 'undefined') {
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
@@ -98,17 +102,14 @@ class ApiClient {
     this.isRefreshing = true;
     this.refreshPromise = (async () => {
       try {
-        const refreshToken = this.getRefreshToken();
-        if (!refreshToken) {
-          return false;
-        }
+        const response = await axios.post(
+          API_CONFIG.refresh,
+          {},
+          { withCredentials: true }
+        );
 
-        const response = await axios.post(API_CONFIG.refresh, {
-          refresh_token: refreshToken,
-        });
-
-        const { access_token, refresh_token } = response.data;
-        this.setTokens(access_token, refresh_token);
+        const { access_token } = response.data;
+        inMemoryAccessToken = access_token;
         return true;
       } catch {
         return false;
@@ -151,7 +152,7 @@ class ApiClient {
   }
 
   isAuthenticated(): boolean {
-    return !!this.getAccessToken();
+    return !!inMemoryAccessToken;
   }
 }
 
